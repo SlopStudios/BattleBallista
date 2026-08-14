@@ -1,0 +1,21 @@
+# Build output
+bin/
+obj/
+*.dll
+*.pdb
+
+# Release archives
+dist/
+*.7z
+*.zip
+
+# Runtime logs
+*.log
+
+# IDE / OS
+.vs/
+.idea/
+*.user
+*.suo
+Thumbs.db
+desktop.ini

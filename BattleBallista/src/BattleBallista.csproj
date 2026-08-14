@@ -1,0 +1,78 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net472</TargetFramework>
+        <LangVersion>9.0</LangVersion>
+        <PlatformTarget>x64</PlatformTarget>
+        <Configuration>Release</Configuration>
+        <!-- Force an OPTIMIZED, non-Edit-and-Continue build. A plain `dotnet build`
+             otherwise emits a Debug/EnableEditAndContinue assembly that MonoMod/Harmony
+             can't process in a heavily-patched load order (this caused BB145 v1.1.4 to
+             crash on startup for modded users). Pin it so it can't regress on the next
+             1.3.15 rebuild. -->
+        <Optimize>true</Optimize>
+        <DebugType>portable</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+        <AssemblyName>BattleBallista</AssemblyName>
+        <RootNamespace>BattleBallista</RootNamespace>
+        <OutputPath>..\bin\Win64_Shipping_Client\</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <GamePath>C:\Program Files (x86)\Steam\steamapps\common\Mount &amp; Blade II Bannerlord</GamePath>
+        <GameBinPath>$(GamePath)\bin\Win64_Shipping_Client</GameBinPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="TaleWorlds.MountAndBlade">
+            <HintPath>$(GameBinPath)\TaleWorlds.MountAndBlade.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Core">
+            <HintPath>$(GameBinPath)\TaleWorlds.Core.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Engine">
+            <HintPath>$(GameBinPath)\TaleWorlds.Engine.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Library">
+            <HintPath>$(GameBinPath)\TaleWorlds.Library.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.InputSystem">
+            <HintPath>$(GameBinPath)\TaleWorlds.InputSystem.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Localization">
+            <HintPath>$(GameBinPath)\TaleWorlds.Localization.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.DotNet">
+            <HintPath>$(GameBinPath)\TaleWorlds.DotNet.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.CampaignSystem">
+            <HintPath>$(GameBinPath)\TaleWorlds.CampaignSystem.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.CampaignSystem.ViewModelCollection">
+            <HintPath>$(GameBinPath)\TaleWorlds.CampaignSystem.ViewModelCollection.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
+    <!-- UIExtenderEx — for the cycle button mixin on MapNavigationVM and the
+         prefab extension on MapBar.xml. Workshop install path (same one
+         ROT_AI uses). -->
+    <PropertyGroup>
+        <UIExtenderExPath>C:\Program Files (x86)\Steam\steamapps\workshop\content\261550\2859222409\bin\Win64_Shipping_Client</UIExtenderExPath>
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="Bannerlord.UIExtenderEx">
+            <HintPath>$(UIExtenderExPath)\Bannerlord.UIExtenderEx.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+</Project>

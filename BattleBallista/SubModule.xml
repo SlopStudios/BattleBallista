@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Module>
+    <Name value="Battle Ballista" />
+    <Id value="BattleBallista" />
+    <Version value="v1.1.6" />
+    <ModuleCategory value="Singleplayer" />
+    <ModuleType value="Community" />
+    <DependedModules>
+        <DependedModule Id="Native" />
+        <DependedModule Id="SandBoxCore" />
+        <DependedModule Id="Sandbox" />
+        <DependedModule Id="Bannerlord.Harmony" />
+        <DependedModule Id="Bannerlord.UIExtenderEx" />
+    </DependedModules>
+    <SubModules>
+        <SubModule>
+            <Name value="BattleBallista" />
+            <DLLName value="BattleBallista.dll" />
+            <SubModuleClassType value="BattleBallista.SubModule" />
+            <Tags>
+                <Tag key="DedicatedServerType" value="none" />
+                <Tag key="IsNoRenderModeElement" value="false" />
+            </Tags>
+        </SubModule>
+    </SubModules>
+    <Xmls />
+</Module>
