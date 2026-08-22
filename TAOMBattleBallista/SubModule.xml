@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Module xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+        xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/BUTR/Bannerlord.XmlSchemas/master/SubModule.xsd">
+    <Name value="Battle Ballista (TAOM)" />
+    <Id value="TAOMBattleBallista" />
+    <Version value="v1.0.0" />
+    <DefaultModule value="false" />
+    <ModuleCategory value="Singleplayer" />
+    <ModuleType value="Community" />
+    <DependedModules>
+        <DependedModule Id="Native" />
+        <DependedModule Id="SandBoxCore" />
+        <DependedModule Id="Sandbox" />
+        <!-- TAOM EDITION: Harmony, UIExtenderEx and MCM are all supplied by
+             TAOM.Dependencies, which TAOM load orders install INSTEAD of the
+             standalone Bannerlord.Harmony / Bannerlord.UIExtenderEx /
+             Bannerlord.MBOptionScreen modules. Declaring those separately here
+             would make the launcher demand mods a TAOM user does not have.
+             UIExtenderEx is a HARD requirement (the campaign-map cycle button is
+             injected through it); MCM is optional at runtime — the deploy hotkey
+             falls back to B when it is absent — but both live in this one module,
+             so a single hard dependency covers the mandatory half. -->
+        <DependedModule Id="TAOM.Dependencies" />
+    </DependedModules>
+    <DependedModuleMetadatas>
+        <DependedModuleMetadata id="Native" order="LoadBeforeThis" />
+        <DependedModuleMetadata id="SandBoxCore" order="LoadBeforeThis" />
+        <DependedModuleMetadata id="Sandbox" order="LoadBeforeThis" />
+        <DependedModuleMetadata id="TAOM.Dependencies" order="LoadBeforeThis" version="v2.0.20" />
+        <!-- TAOM core and its map are optional: Battle Ballista calls no TAOM API and
+             works in any battle. They are listed only so the launcher loads them first
+             when present, keeping this module late in the order. -->
+        <DependedModuleMetadata id="TAOM" order="LoadBeforeThis" optional="true" />
+        <DependedModuleMetadata id="TAOM_Map" order="LoadBeforeThis" optional="true" />
+    </DependedModuleMetadatas>
+    <SubModules>
+        <SubModule>
+            <Name value="TAOMBattleBallista" />
+            <DLLName value="TAOMBattleBallista.dll" />
+            <SubModuleClassType value="TAOMBattleBallista.SubModule" />
+            <Tags>
+                <Tag key="DedicatedServerType" value="none" />
+                <Tag key="IsNoRenderModeElement" value="false" />
+            </Tags>
+        </SubModule>
+    </SubModules>
+    <Xmls />
+</Module>

@@ -1,0 +1,88 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net472</TargetFramework>
+        <LangVersion>9.0</LangVersion>
+        <PlatformTarget>x64</PlatformTarget>
+        <Configuration>Release</Configuration>
+        <!-- Force an OPTIMIZED, non-Edit-and-Continue build regardless of how the
+             project is invoked. A plain `dotnet build` (without -c Release) otherwise
+             emits a Debug/unoptimized/EnableEditAndContinue assembly, which MonoMod/
+             Harmony cannot reliably process in a heavily-patched load order — that
+             shipped once as BB145 v1.1.4 and crashed on startup for modded users.
+             Pin these so it can't regress. Portable PDB kept for crash reports. -->
+        <Optimize>true</Optimize>
+        <DebugType>portable</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+        <AssemblyName>TAOMBattleBallista</AssemblyName>
+        <RootNamespace>TAOMBattleBallista</RootNamespace>
+        <OutputPath>..\bin\Win64_Shipping_Client\</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <GamePath>C:\Program Files (x86)\Steam\steamapps\common\Mount &amp; Blade II Bannerlord</GamePath>
+        <GameBinPath>$(GamePath)\bin\Win64_Shipping_Client</GameBinPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="TaleWorlds.MountAndBlade">
+            <HintPath>$(GameBinPath)\TaleWorlds.MountAndBlade.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Core">
+            <HintPath>$(GameBinPath)\TaleWorlds.Core.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Engine">
+            <HintPath>$(GameBinPath)\TaleWorlds.Engine.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Library">
+            <HintPath>$(GameBinPath)\TaleWorlds.Library.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.InputSystem">
+            <HintPath>$(GameBinPath)\TaleWorlds.InputSystem.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.Localization">
+            <HintPath>$(GameBinPath)\TaleWorlds.Localization.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.DotNet">
+            <HintPath>$(GameBinPath)\TaleWorlds.DotNet.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.CampaignSystem">
+            <HintPath>$(GameBinPath)\TaleWorlds.CampaignSystem.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="TaleWorlds.CampaignSystem.ViewModelCollection">
+            <HintPath>$(GameBinPath)\TaleWorlds.CampaignSystem.ViewModelCollection.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+
+    <!-- TAOM EDITION: UIExtenderEx and MCM come from TAOM.Dependencies, NOT from the
+         standalone Steam Workshop modules the BattleBallista/BattleBallista145 lines
+         use. TAOM.Dependencies bundles Harmony, ButterLib, UIExtenderEx and MCMv5 as
+         one module, and TAOM load orders install it INSTEAD of those separate mods —
+         so referencing the workshop copies here would compile against assemblies that
+         may not be present at runtime. Building against TAOM's (slightly older) copies
+         is also the safer direction: code compiled against 2.13.2 / 5.12.1 runs fine on
+         newer builds, not necessarily the reverse. -->
+    <PropertyGroup>
+        <TAOMDependenciesPath>$(GamePath)\Modules\TAOM.Dependencies\bin\Win64_Shipping_Client</TAOMDependenciesPath>
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="Bannerlord.UIExtenderEx">
+            <HintPath>$(TAOMDependenciesPath)\Bannerlord.UIExtenderEx.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+        <Reference Include="MCMv5">
+            <HintPath>$(TAOMDependenciesPath)\MCMv5.dll</HintPath>
+            <Private>false</Private>
+        </Reference>
+    </ItemGroup>
+</Project>

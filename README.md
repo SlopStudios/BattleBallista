@@ -31,8 +31,12 @@ This repo holds two co-installable editions of the same mod, one per game-versio
 |---|---|---|---|
 | [`BattleBallista145/`](BattleBallista145/) | **1.4.5 – 1.4.7** | `BattleBallista145` | Actively shipped |
 | [`BattleBallista/`](BattleBallista/) | **1.3.15** | `BattleBallista` | Legacy; source current, binary not yet rebuilt |
+| [`TAOMBattleBallista/`](TAOMBattleBallista/) | **TAOM** total conversion | `TAOMBattleBallista` | For TAOM load orders |
 
-Install **one** — whichever matches your game. They use different module IDs, DLL names and
+Install **one** — whichever matches your game (or your total conversion). The **TAOM** edition is the
+same mod built for [TAOM](https://www.nexusmods.com/mountandblade2bannerlord/) load orders: it resolves
+Harmony, UIExtenderEx and MCM through the `TAOM.Dependencies` bundle instead of the standalone modules,
+so it needs no separate dependency mods. They use different module IDs, DLL names and
 namespaces, so having both present causes no conflict.
 
 > **1.3.15 users:** the source here contains fixes that are not in any released 1.3.15 binary yet.
