@@ -2,7 +2,7 @@
 <Module>
     <Name value="Battle Ballista (1.4.5)" />
     <Id value="BattleBallista145" />
-    <Version value="v1.2.3" />
+    <Version value="v1.5.2" />
     <ModuleCategory value="Singleplayer" />
     <ModuleType value="Community" />
     <DependedModules>

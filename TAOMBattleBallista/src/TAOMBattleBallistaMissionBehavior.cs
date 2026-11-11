@@ -18,7 +18,7 @@ namespace TAOMBattleBallista
     /// Each press = one full deployment. Mangonel / Fire Mangonel /
     /// Trebuchet prefabs already bundle their own matching ammo pile
     /// (stone / pot / stone respectively); Ballista carries its bolts on
-    /// the engine itself. Cap is 3 per kind per battle.
+    /// the engine itself. Per-kind cap is MCM-configurable (1-10, default 4).
     public class TAOMBattleBallistaMissionBehavior : MissionBehavior
     {
         public override MissionBehaviorType BehaviorType => MissionBehaviorType.Other;
@@ -54,20 +54,65 @@ namespace TAOMBattleBallista
             "IndoorMissionController",
             "StealthMissionController",
             "SabotageMissionController",
+            // 1.5.7 sweep additions (2026-11-11). Tournament variants and town
+            // horse race are arena-family scenes; prison break and the villa
+            // sneak are stealth-family; training field is the tutorial; the
+            // rest are NavalDLC scripted storyline set-pieces where a spawned
+            // engine could break quest state. Deliberately NOT blocked:
+            // PirateBattle/NavalRaid (real combat — the terrain guard already
+            // bails on ship decks, and shore raids are legitimate deploys),
+            // TownCenter/Village (alley defense is a user-loved context),
+            // sally-out controllers (the MCM toggle governs those).
+            "TournamentArcheryMissionController",
+            "TournamentJoustingMissionController",
+            "TownHorseRaceMissionController",
+            "PrisonBreakMissionController",
+            "TrainingFieldMissionController",
+            "SneakIntoTheVillaMissionController",
+            "NavalStorylineAlleyFightMissionController",
+            "NavalStorylineCaptivityMissionController",
+            "FloatingFortressSetPieceBattleMissionController",
+            "HelpingAnAllySetPieceBattleMissionController",
+            "BlockedEstuaryMissionController",
+            "Quest5SetPieceBattleMissionController",
+            "WoundedBeastMissionController",
         };
 
         private const float SpawnDistance = 4f;
+
+        // Surface probing. We look for the surface the PLAYER is standing on, not the
+        // terrain: on a castle wall the terrain is the courtyard far below. The probe
+        // starts a little above the player head so it begins inside the same space he
+        // occupies (starting higher risks catching a roof or arch above), and reaches a
+        // few metres down so a step or short drop still counts.
+        private const float SurfaceProbeAbove = 1.8f;
+        private const float SurfaceProbeBelow = 3.0f;
+        private const float MinSpawnDistance = 1.2f;
+        private const float TripodRadius = 0.6f;
+        // A hit may be at most this far ABOVE the player's feet to count as the surface
+        // he is standing on. The probe RAY starts higher (SurfaceProbeAbove) so it clears
+        // waist-high clutter, but accepting hits that high would perch engines on merlons,
+        // crates, or the chassis of an already-deployed engine. A step up is fine; a
+        // parapet up is not.
+        private const float MaxStepUp = 0.5f;
+        // How close a probe hit must be to the terrain height to count AS terrain.
+        private const float TerrainMatchTolerance = 0.15f;
+        // If no surface is found ahead, how far below the player terrain may still be
+        // before we refuse rather than dropping the engine off an edge.
+        private const float MaxTerrainFallbackDrop = 3.0f;
+        // Walk the spot back toward the player until a surface at his level appears.
+        private static readonly float[] SurfaceRetryFractions = { 1f, 0.75f, 0.5f, 0.3f };
         private const float TerrainLiftEpsilon = 0.05f;
         private const float MaxTiltCosine = 0.7f;
-        private const int MaxEnginesPerKindPerBattle = 3;
+        // Per-kind deploy cap now comes from DeployCapSetting (MCM, 1-10, default 4)
+        // - read fresh on every deploy attempt so changes apply mid-battle.
         private const float MinTerrainHeight = -10000f;
         private const float MaxTerrainHeight = 10000f;
 
         private bool _wasKeyDown;
 
-        // Per-kind press count for the current battle. For Ballista each
-        // press spawns an engine (cap 3 = 3 engines). For others, presses
-        // alternate engine/ammo (cap 6 = 3 engines + 3 piles).
+        // Per-kind press count for the current battle; compared against the
+        // MCM-configurable cap (DeployCapSetting) on each deploy attempt.
         private readonly Dictionary<SiegeKind, int> _pressCount = new Dictionary<SiegeKind, int>();
 
         // Crash-forensics breadcrumbs (v1.2.1). We can't catch exceptions in
@@ -201,10 +246,11 @@ namespace TAOMBattleBallista
                 int press;
                 _pressCount.TryGetValue(kind, out press);
 
-                if (press >= MaxEnginesPerKindPerBattle)
+                int maxPerKind = DeployCapSetting.MaxPerKind;
+                if (press >= maxPerKind)
                 {
                     Toast("Battle Ballista: " + SiegeCycle.CurrentLabel + " limit reached (" +
-                        MaxEnginesPerKindPerBattle + " per battle).", Colors.Yellow);
+                        maxPerKind + " per battle).", Colors.Yellow);
                     return;
                 }
 
@@ -235,12 +281,62 @@ namespace TAOMBattleBallista
                 // player and the target — prevents spawning inside walls/props.
                 targetXY = ClampSpawnAgainstObstacles(scene, playerPos, targetXY);
 
+                // ---- Surface resolution -----------------------------------------------
+                // Previously this asked ONLY GetTerrainHeightAndNormal, which returns the
+                // TERRAIN height. Walls, wooden walkways, siege-tower tops and ship decks
+                // are static mesh entities, NOT terrain -- so deploying while standing on a
+                // castle wall put the engine on the courtyard floor metres below (user
+                // report, 2026-08-23). Instead probe DOWNWARD from the player head height:
+                // the first solid thing under that ray is the surface he is actually
+                // standing on, wall or ground alike.
+                //
+                // Deliberately NOT Scene.GetGroundHeightAtPosition(pos, out normal, ...):
+                // verified in the 1.4.8 decompile that this overload sets
+                // normal = Vec3.Invalid and never assigns it, so trusting its normal would
+                // silently build a garbage frame.
+                float playerZ = playerPos.z;
+                Vec2 playerXY = new Vec2(playerPos.x, playerPos.y);
+                Vec2 lookXY = new Vec2(lookDir.x, lookDir.y);
+
+                // Walk the spot back toward the player until a surface at roughly his own
+                // level appears. This is what stops an engine sailing off the battlements
+                // when you deploy while looking out over the edge -- it lands on the walkway
+                // behind you instead of the courtyard below.
+                float reach = (targetXY - playerXY).Length;
+                bool haveSurface = false;
+                bool surfaceIsTerrain = false;
+                float surfaceZ = 0f;
+                float previousD = -1f;
+                for (int i = 0; i < SurfaceRetryFractions.Length; i++)
+                {
+                    float d = reach * SurfaceRetryFractions[i];
+                    if (d < MinSpawnDistance) d = MinSpawnDistance;
+                    // Never probe beyond the obstacle-clamped reach: when a wall is
+                    // directly ahead the clamp pulled reach below MinSpawnDistance, and
+                    // raising d back up would probe inside/behind that wall.
+                    if (d > reach) d = reach;
+                    // Clamping can collapse several fractions onto the same distance -
+                    // don't repeat an identical probe.
+                    if (Math.Abs(d - previousD) < 0.01f) continue;
+                    previousD = d;
+                    Vec2 candidate = new Vec2(playerXY.x + lookXY.x * d, playerXY.y + lookXY.y * d);
+                    if (TryProbeSurface(scene, candidate, playerZ, out float probedZ, out bool probedTerrain))
+                    {
+                        targetXY = candidate;
+                        surfaceZ = probedZ;
+                        surfaceIsTerrain = probedTerrain;
+                        haveSurface = true;
+                        break;
+                    }
+                }
+
                 scene.GetTerrainHeightAndNormal(targetXY, out float terrainHeight, out Vec3 terrainNormal);
 
                 // Refuse to spawn on missions without real terrain (sea
                 // battles, ship interiors). A bizarre height value indicates
                 // the query hit nothing meaningful; bail rather than place
-                // under the map or in the sky.
+                // under the map or in the sky. Kept as the FIRST gate so naval
+                // missions behave exactly as they did before this change.
                 if (float.IsNaN(terrainHeight) || float.IsInfinity(terrainHeight)
                     || terrainHeight < MinTerrainHeight || terrainHeight > MaxTerrainHeight)
                 {
@@ -248,19 +344,45 @@ namespace TAOMBattleBallista
                     return;
                 }
 
-                if (terrainNormal.LengthSquared < 0.0001f || terrainNormal.z < MaxTiltCosine)
-                    terrainNormal = new Vec3(0f, 0f, 1f);
-                else
-                    terrainNormal.Normalize();
+                if (!haveSurface)
+                {
+                    // Nothing solid within the probe band. Falling back to terrain is fine
+                    // when the terrain is plausibly underfoot (open field, gentle slope);
+                    // but if it is far below, the player is up on something with only air
+                    // ahead -- dropping the engine down there is the very bug being fixed.
+                    if (playerZ - terrainHeight <= MaxTerrainFallbackDrop)
+                    {
+                        surfaceZ = terrainHeight;
+                        surfaceIsTerrain = true;
+                    }
+                    else
+                    {
+                        Toast("Battle Ballista: nothing solid in front of you to place on - step back from the edge.", Colors.Yellow);
+                        return;
+                    }
+                }
 
-                Vec3 origin = new Vec3(targetXY.x, targetXY.y, terrainHeight + TerrainLiftEpsilon);
+                // Terrain keeps the existing slope alignment, so field battles are
+                // unchanged. A non-terrain surface gives us no normal, so derive one from a
+                // tripod of downward probes: flat walkways come out level, ramps sloped, and
+                // anything implausible is rejected by the tilt guard just below.
+                Vec3 surfaceNormal = surfaceIsTerrain
+                    ? terrainNormal
+                    : ProbeSurfaceNormal(scene, targetXY, playerZ);
+
+                if (surfaceNormal.LengthSquared < 0.0001f || surfaceNormal.z < MaxTiltCosine)
+                    surfaceNormal = new Vec3(0f, 0f, 1f);
+                else
+                    surfaceNormal.Normalize();
+
+                Vec3 origin = new Vec3(targetXY.x, targetXY.y, surfaceZ + TerrainLiftEpsilon);
 
                 // Engine prefabs (ballista_a etc.) put the operator stand at
                 // body local +Y and the firing axis at local -Y. Pointing
                 // frame.rotation.f at -lookDir makes projectiles fly in the
                 // player's look direction. Stone piles ignore facing — but
                 // the same frame is harmless to use.
-                MatrixFrame frame = BuildAlignedFrame(origin, terrainNormal, -lookDir);
+                MatrixFrame frame = BuildAlignedFrame(origin, surfaceNormal, -lookDir);
 
                 // Capture the spawned ROOT entity. CreateMissionObjectFromPrefab returns
                 // only the root's first MissionObject script — which for mangonel_a /
@@ -346,7 +468,7 @@ namespace TAOMBattleBallista
                 }
 
                 Toast(SiegeCycle.CurrentLabel + " deployed (" + (press + 1) + "/" +
-                    MaxEnginesPerKindPerBattle + "). Walk up and press F to use.", Colors.Green);
+                    maxPerKind + "). Walk up and press F to use.", Colors.Green);
             }
             catch (Exception ex)
             {
@@ -379,6 +501,7 @@ namespace TAOMBattleBallista
         private static bool HasBlockedMissionBehavior()
         {
             var behaviors = Mission.Current.MissionBehaviors;
+            bool allowSallyOut = SallyOutToggle.AllowSallyOut;
             for (int i = 0; i < behaviors.Count; i++)
             {
                 string name = behaviors[i].GetType().Name;
@@ -391,7 +514,12 @@ namespace TAOMBattleBallista
                 // enemy sallied out"). Block every sally-out controller variant
                 // (vanilla SallyOutMissionController / SandBoxSallyOutMissionController /
                 // CustomSallyOutMissionController, plus any mod-renamed one) by substring.
-                if (name.IndexOf("SallyOut", StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                // Since the sally-out block became a toggle (default ON = allowed): the
+                // v1.1.6 block was precautionary and its triggering crash proved unrelated,
+                // and vanilla's engine AI explicitly handles sally-out TeamAI types
+                // (TeamAISallyOutAttacker/Defender, MissionTeamAITypeEnum.SallyOut —
+                // 1.4.8 decompile). The toggle remains for anyone who does hit trouble.
+                if (!allowSallyOut && name.IndexOf("SallyOut", StringComparison.OrdinalIgnoreCase) >= 0) return true;
 
                 for (int j = 0; j < BlockedMissionBehaviorNames.Length; j++)
                 {
@@ -443,6 +571,86 @@ namespace TAOMBattleBallista
 
             foreach (GameEntity child in entity.GetChildren())
                 InitializeSiegeWeaponAi(child);
+        }
+
+        // Probe straight down for the first solid surface near the player own level.
+        // Returns its height and whether it was TERRAIN (entity handle invalid) rather
+        // than a mesh such as a wall walkway, so the caller can pick the right normal
+        // source. The band is deliberately narrow: it must not reach down to the
+        // courtyard when the player is up on the battlements.
+        private static bool TryProbeSurface(Scene scene, Vec2 xy, float referenceZ,
+            out float surfaceZ, out bool isTerrain)
+        {
+            surfaceZ = 0f;
+            isTerrain = false;
+            try
+            {
+                Vec3 from = new Vec3(xy.x, xy.y, referenceZ + SurfaceProbeAbove);
+                Vec3 to = new Vec3(xy.x, xy.y, referenceZ - SurfaceProbeBelow);
+                if (scene.RayCastForClosestEntityOrTerrain(from, to, out float _, out Vec3 hit,
+                        0.01f, BodyFlags.CommonCollisionExcludeFlags))
+                {
+                    surfaceZ = hit.z;
+
+                    // Reject hits meaningfully ABOVE the player's feet: that is a parapet,
+                    // a crate, or an already-deployed engine - not the surface underfoot.
+                    // Failing here lets the retry loop step closer and find the walkway.
+                    if (surfaceZ > referenceZ + MaxStepUp)
+                        return false;
+
+                    // Terrain or mesh? Deliberately decided by comparing the hit height to
+                    // the terrain height rather than by the entity handle: the overload that
+                    // hands back the hit entity uses WeakGameEntity on 1.4.x, and whether
+                    // that type exists on 1.3.15 is unverified (no DLLs on hand). Heights
+                    // are available in every version, so all three editions share this code.
+                    scene.GetTerrainHeightAndNormal(xy, out float terrainAtProbe, out Vec3 _);
+                    isTerrain = !float.IsNaN(terrainAtProbe) && !float.IsInfinity(terrainAtProbe)
+                                && Math.Abs(surfaceZ - terrainAtProbe) <= TerrainMatchTolerance;
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                // If the raycast API misbehaves, report no surface; the caller falls back
+                // to terrain exactly as the pre-probe code did.
+                Log("Surface probe failed: " + ex);
+            }
+            return false;
+        }
+
+        // Derive a surface normal for non-terrain surfaces (walls, platforms, decks) by
+        // probing three points around the spot and taking the plane through them. The
+        // engine exposes no normal for mesh raycasts, and the GetGroundHeightAtPosition
+        // overload that appears to return one never actually assigns it. Any degenerate
+        // or implausible result falls back to world-up, and the caller tilt-guards it.
+        private static Vec3 ProbeSurfaceNormal(Scene scene, Vec2 xy, float referenceZ)
+        {
+            Vec3 up = new Vec3(0f, 0f, 1f);
+            try
+            {
+                Vec3[] pts = new Vec3[3];
+                for (int i = 0; i < 3; i++)
+                {
+                    double angle = i * 2.0 * Math.PI / 3.0;
+                    Vec2 offset = new Vec2(
+                        xy.x + TripodRadius * (float)Math.Cos(angle),
+                        xy.y + TripodRadius * (float)Math.Sin(angle));
+                    if (!TryProbeSurface(scene, offset, referenceZ, out float z, out bool _))
+                        return up; // overhanging an edge - keep it level
+                    pts[i] = new Vec3(offset.x, offset.y, z);
+                }
+
+                Vec3 normal = Vec3.CrossProduct(pts[1] - pts[0], pts[2] - pts[0]);
+                if (normal.LengthSquared < 0.000001f) return up;
+                normal.Normalize();
+                if (normal.z < 0f) normal = normal * -1f;
+                return normal;
+            }
+            catch (Exception ex)
+            {
+                Log("Surface normal probe failed: " + ex);
+                return up;
+            }
         }
 
         // Cast a short ray from the player's chest height to the target's chest
@@ -517,7 +725,7 @@ namespace TAOMBattleBallista
         }
 
         // Keep in sync with SubModule.xml <Version> on every release.
-        private const string ModVersion = "v1.0.0";
+        private const string ModVersion = "v1.3.2";
 
         private static bool _sessionHeaderWritten;
 

@@ -1,5 +1,59 @@
 # Battle Ballista — Changelog
 
+## v1.2.0 (2026-08-23) — Deploy on walls and other raised surfaces
+
+**SOURCE-ONLY — NOT BUILT OR SHIPPED.** The install is on 1.4.8 and this edition needs a 1.3.15 game bin to compile; it will ship with the rest of the pending 1.3.15 work at the next rollback window. See the v1.1.6 entry below for the other unshipped changes.
+
+**Siege engines can now be deployed on walls, walkways and other raised surfaces — not just
+on the ground.** Reported by a player: standing on a castle wall during a siege and deploying put the
+engine on the courtyard floor several metres below, instead of on the wall underfoot. Field battles
+were unaffected, which is what made it look like a siege-only quirk.
+
+**Root cause.** The spawn point asked `Scene.GetTerrainHeightAndNormal(...)` for its height. That
+returns the height of the **terrain** — and castle walls, wooden walkways, siege-tower platforms,
+bridges and ship decks are static mesh entities, not terrain. On a wall, the terrain under your feet
+*is* the courtyard, so the engine was placed exactly where the code asked: far below you.
+
+**Fix.** The spawn point is now resolved by probing straight **down from the player's own head
+height** and taking the first solid surface found — wall or ground alike. Specifics:
+
+- **Probe band follows the player.** The ray starts slightly above head height (so it begins in the
+  same space you occupy rather than catching a roof or arch above) and reaches a few metres down, so
+  a step or a short drop still counts but a wall-to-courtyard fall does not.
+- **Walks back toward you if there is nothing ahead.** Deploying while looking out over the
+  battlements used to fling the engine off the edge; the spot now steps closer to you until it finds
+  the walkway you are standing on.
+- **Refuses instead of dropping.** If there is genuinely no surface at your level and the terrain is
+  far below, you get a yellow "nothing solid in front of you to place on" toast rather than an engine
+  silently landing in the courtyard.
+- **Tilt on raised surfaces.** The engine gives no surface normal for mesh raycasts, so one is
+  derived from three probes around the spot: flat walkways come out level, ramps come out sloped, and
+  any implausible result falls back to level via the existing tilt guard.
+
+**Field battles are unchanged by design.** When the probe lands on terrain, the original terrain
+height and slope-aligned normal are used exactly as before, and the sea/no-terrain bail-out is still
+the first gate, so naval missions behave identically.
+
+**Implementation note for maintainers:** this deliberately does NOT use
+`Scene.GetGroundHeightAtPosition(pos, out normal, ...)`, which looks perfect for the job. Verified in
+the 1.4.8 decompile that this overload sets `normal = Vec3.Invalid` and never assigns it — trusting
+its normal would silently produce a garbage frame. The terrain-vs-mesh test also compares heights
+rather than using the hit-entity overload, because that one returns `WeakGameEntity` on 1.4.x and it
+is unverified whether the type exists on 1.3.15; the height comparison compiles on every line.
+
+**Post-review hardening (adversarial review, same day):**
+- **Hits above your feet are rejected** (max step-up 0.5m). The probe ray still *starts* above head
+  height to clear clutter, but a hit that high is a parapet/merlon, a crate, or the chassis of an
+  engine you already deployed — not the surface underfoot. Rejecting it makes the retry loop step
+  closer and find the real walkway, instead of perching the new engine on top of the obstacle.
+- **The probe never reaches beyond the obstacle clamp.** With a wall directly ahead the clamp pulls
+  the spawn reach very short; the retry floor used to push the probe back out past 1.2m — beyond the
+  very obstacle the clamp detected — and repeat the identical probe four times. Distances now cap at
+  the clamped reach and duplicate probes are skipped.
+
+**Not yet verified in-game** — please test on a wall during a siege, and confirm a normal field
+battle still behaves as before.
+
 ## v1.1.6 (2026-07-19) — Block deployment in sally-out battles (ported from the 1.4.5 edition)
 
 **⚠ SOURCE-ONLY — NOT YET BUILT OR SHIPPED.** The game install is currently on 1.4.7, and this

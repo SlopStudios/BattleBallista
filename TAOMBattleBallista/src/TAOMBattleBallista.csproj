@@ -85,4 +85,16 @@
             <Private>false</Private>
         </Reference>
     </ItemGroup>
+  <!-- TAOM EDITION: TAOM and TAOM.Dependencies each ship FOUR runtime folders, and Game Pass
+       installs load Gaming.Desktop.x64_Shipping_Client. Mirror the Client build there so this
+       module does not silently fail to load for that audience — TAOM supports them, so a port
+       that ships Win64 only is a regression against its own host. Purely additive: Win64 users
+       are unaffected. Target lifted from TAOMNobleIntrigues (Noble Intrigues 1, 2026-08-23),
+       who adopted it after I reported the gap. -->
+  <Target Name="MirrorGamingDesktopOutput" AfterTargets="Build">
+    <ItemGroup>
+      <TaomBbOutput Include="$(OutputPath)$(AssemblyName).dll;$(OutputPath)$(AssemblyName).pdb" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TaomBbOutput)" DestinationFolder="../bin/Gaming.Desktop.x64_Shipping_Client/" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

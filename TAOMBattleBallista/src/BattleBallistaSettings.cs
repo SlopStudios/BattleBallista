@@ -48,5 +48,24 @@ namespace TAOMBattleBallista
                 "D1-D0 are the number-row keys. The gamepad binding (D-pad Right) is fixed and " +
                 "unaffected by this setting. If MCM is not installed, the mod simply uses B.")]
         public Dropdown<string> DeployKey { get; set; } = new Dropdown<string>(DeployKeyOptions, selectedIndex: 1); // "B"
+
+        [SettingPropertyGroup("Deployment", GroupOrder = 1)]
+        [SettingPropertyBool("Allow sally-out deployment", Order = 0, RequireRestart = false,
+            HintText = "Allow deploying engines in sally-out battles (defenders sallying out of a " +
+                "besieged settlement). These were blocked in v1.1.6 as a precaution after a crash " +
+                "report that later proved unrelated; the vanilla engine AI explicitly supports " +
+                "sally-outs, so they are enabled by default. Turn this OFF if you experience " +
+                "crashes when deploying in battles outside a besieged settlement's walls. " +
+                "Without MCM installed, sally-out deployment is allowed.")]
+        public bool AllowSallyOutDeployment { get; set; } = true;
+
+        [SettingPropertyGroup("Deployment", GroupOrder = 1)]
+        [SettingPropertyInteger("Max deployments per engine type", 1, 10, Order = 1, RequireRestart = false,
+            HintText = "How many of EACH engine type (Ballista, Catapult, Fire Catapult, Trebuchet) " +
+                "you can deploy per battle. Applies immediately - even mid-battle: raising it " +
+                "un-caps a type you had exhausted, lowering it stops further deploys of a type " +
+                "already at or over the new cap (engines already placed stay). " +
+                "Default: 4. Without MCM installed, the cap is 4.")]
+        public int MaxEnginesPerKind { get; set; } = 4;
     }
 }
