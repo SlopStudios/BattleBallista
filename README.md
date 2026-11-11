@@ -13,13 +13,14 @@ No Harmony patches of its own. No save data. Nothing changes unless you press th
 
 - **Deploy engines mid-battle** — Ballista, Catapult, Fire Catapult, Trebuchet
 - **Keyboard or gamepad** — default **B**, or **D-pad Right**
-- **Configurable hotkey** via MCM (1.4.5 edition) — MCM is optional; without it the key is B
+- **Configurable via MCM** (1.4.5 edition; all optional) — deploy key, per-kind deploy cap (1–10, default 4), sally-out toggle. Without MCM everything runs on defaults (B / 4 / sally-outs allowed)
 - **AI soldiers can use your engines** — they path to them and man them like any scene engine
 - **Terrain-aligned placement** — engines tilt to match the local slope
 - **Obstacle-aware** — the spawn point slides closer to you if geometry is in the way
-- **3 per engine kind per battle**
-- **Context-aware** — silently refuses in arenas, tournaments, hideouts, lord's hall fights,
-  indoor scripted scenes, sally-outs, and missions without real terrain
+- **Per-kind deploy cap** — default 4 per battle, MCM-configurable 1–10 (1.4.5 edition; the 1.3.15 line keeps the fixed 3)
+- **Context-aware** — refuses in arenas, tournaments, hideouts, lord's hall fights, indoor and
+  storyline scripted scenes (23 blocked mission types as of v1.5.2, including the naval DLC's
+  set-pieces), and missions without real terrain. Sally-outs are deployable (toggleable, default on)
 
 See [FEATURES.md](FEATURES.md) for the complete list.
 
@@ -29,23 +30,23 @@ This repo holds two co-installable editions of the same mod, one per game-versio
 
 | Folder | Game version | Module ID | Status |
 |---|---|---|---|
-| [`BattleBallista145/`](BattleBallista145/) | **1.4.5 – 1.4.7** | `BattleBallista145` | Actively shipped |
-| [`BattleBallista/`](BattleBallista/) | **1.3.15** | `BattleBallista` | Legacy; source current, binary not yet rebuilt |
+| [`BattleBallista145/`](BattleBallista145/) | **1.4.5 – 1.5.7** | `BattleBallista145` | Actively shipped (v1.5.2) |
+| [`BattleBallista/`](BattleBallista/) | **1.3.15** | `BattleBallista` | **Retired** (2026-10-17); final source kept for reference |
 
 Install **one** — whichever matches your game. They use different module IDs, DLL names and
 namespaces, so having both present causes no conflict.
 
-> **1.3.15 users:** the source here contains fixes that are not in any released 1.3.15 binary yet.
-> The last published 1.3.15 build predates the AI-crash fix; if an AI mans your engine on that
-> build, the mission will crash. Build from source (below) or use the 1.4.5 line.
+> **1.3.15 users:** this line is retired. No released 1.3.15 binary ever included the AI-crash
+> fix — if an AI mans your engine on the old build, the mission will crash. The final fixed
+> source is kept here for reference; building it requires a 1.3.15 install. Prefer the 1.4.5+ line.
 
 ## Requirements
 
 - [Harmony](https://www.nexusmods.com/mountandblade2bannerlord/mods/2006) (required by UIExtenderEx)
 - [UIExtenderEx](https://www.nexusmods.com/mountandblade2bannerlord/mods/2102) — **required**; the
   campaign-map cycle button is injected through it
-- [MCM](https://www.nexusmods.com/mountandblade2bannerlord/mods/612) — *optional*, only for
-  rebinding the deploy key (1.4.5 edition)
+- [MCM](https://www.nexusmods.com/mountandblade2bannerlord/mods/612) — *optional*; unlocks the
+  deploy-key rebind, the deploy-cap slider and the sally-out toggle (1.4.5 edition)
 
 ## Installation
 
@@ -68,16 +69,17 @@ trebuchets bring their own ammo pile; the ballista carries its bolts.
 
 ### Configuration (1.4.5 edition)
 
-With MCM installed: **Options → Mod Options → Battle Ballista (1.4.5) → Hotkey → Deploy Key**.
-Changes apply immediately. Without MCM, the mod runs normally on the default **B**.
+With MCM installed: **Options → Mod Options → Battle Ballista (1.4.5)** — Deploy Key, Maximum
+engines per kind (1–10, default 4) and Allow sally-out deployment (default on). Changes apply
+immediately, even mid-battle. Without MCM, the mod runs normally on the defaults.
 
 ## Building from source
 
 Requires the .NET SDK and a local Bannerlord installation.
 
 ```bash
-cd BattleBallista145/src && dotnet build BattleBallista145.csproj   # 1.4.5 – 1.4.7
-cd BattleBallista/src    && dotnet build BattleBallista.csproj      # 1.3.15
+cd BattleBallista145/src && dotnet build BattleBallista145.csproj -c Release   # 1.4.5 – 1.5.7
+# BattleBallista/src (1.3.15) is retired reference source — building it needs a 1.3.15 install
 ```
 
 The `.csproj` files reference game and dependency assemblies by **absolute path** (`GamePath`,
