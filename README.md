@@ -26,18 +26,13 @@ See [FEATURES.md](FEATURES.md) for the complete list.
 
 ## Which edition do I install?
 
-This repo holds two co-installable editions of the same mod, one per game-version line:
+This branch holds three co-installable editions of the same mod:
 
 | Folder | Game version | Module ID | Status |
 |---|---|---|---|
-<<<<<<< HEAD
-| [`BattleBallista145/`](BattleBallista145/) | **1.4.5 – 1.4.7** | `BattleBallista145` | Actively shipped |
-| [`BattleBallista/`](BattleBallista/) | **1.3.15** | `BattleBallista` | Legacy; source current, binary not yet rebuilt |
-| [`TAOMBattleBallista/`](TAOMBattleBallista/) | **TAOM** total conversion | `TAOMBattleBallista` | For TAOM load orders |
-=======
 | [`BattleBallista145/`](BattleBallista145/) | **1.4.5 – 1.5.7** | `BattleBallista145` | Actively shipped (v1.5.2) |
+| [`TAOMBattleBallista/`](TAOMBattleBallista/) | **TAOM** total conversion | `TAOMBattleBallista` | Actively shipped (v1.3.2) |
 | [`BattleBallista/`](BattleBallista/) | **1.3.15** | `BattleBallista` | **Retired** (2026-10-17); final source kept for reference |
->>>>>>> main
 
 Install **one** — whichever matches your game (or your total conversion). The **TAOM** edition is the
 same mod built for [TAOM](https://www.nexusmods.com/mountandblade2bannerlord/) load orders: it resolves
